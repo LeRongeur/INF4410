@@ -12,11 +12,11 @@ import ca.polymtl.inf4410.tp1.shared.ServerInterface.Command;
 public class Client {
 	public static void main(String[] args) {
 		String distantHostname = null;
-		int x = 0;
+		String x = 0;
 		if (args.length > 0) {
 			distantHostname = args[0];
 			if (args.length > 1) {
-				x = Integer.parseInt(args[1]);
+				x = args[1];
 			}
 		}
 
@@ -25,8 +25,8 @@ public class Client {
 		//int size = (int) Math.pow(10, x);
 		//byte[] var = new byte[size];
 		//client.run(var);
-		Command commandArg = Command.values()[x];
-		client.runCommand(commandArg);
+		int command = convertStringCommandToInt(x);
+		client.runCommand(command);
 	}
 
 	FakeServer localServer = null; // Pour tester la latence d'un appel de
@@ -49,7 +49,7 @@ public class Client {
 		}
 	}
 
-	private void runCommand(Command command) {
+	private void runCommand(int command) {
 		appelNormal(command);
 
 		if (localServerStub != null) {
@@ -79,7 +79,7 @@ public class Client {
 		return stub;
 	}
 
-	private void appelNormal(Command command) {
+	private void appelNormal(int command) {
 		long start = System.nanoTime();
 		localServer.executeCommand(command);
 		long end = System.nanoTime();
@@ -88,7 +88,7 @@ public class Client {
 				+ " ns");
 	}
 
-	private void appelRMILocal(Command command) {
+	private void appelRMILocal(int command) {
 		try {
 			long start = System.nanoTime();
 			localServerStub.executeCommand(command);
@@ -101,7 +101,7 @@ public class Client {
 		}
 	}
 
-	private void appelRMIDistant(Command command) {
+	private void appelRMIDistant(int command) {
 		try {
 			long start = System.nanoTime();
 			distantServerStub.executeCommand(command);
@@ -113,4 +113,8 @@ public class Client {
 			System.out.println("Erreur: " + e.getMessage());
 		}
 	}
+	private int convertStringCommandToInt(String command)
+	{
+		
+	} 
 }
