@@ -8,7 +8,7 @@ public class FakeServer {
 	}
 	public void executeCommand(int command)
 	{
-		if (command >= 0 && command <= 4)
+		if (command >= 0 && command <= 5)
 		{
 			switch(Command.values()[command]) 
 			{

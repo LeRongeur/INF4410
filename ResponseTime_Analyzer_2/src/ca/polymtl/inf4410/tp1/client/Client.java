@@ -9,16 +9,25 @@ import java.rmi.registry.Registry;
 import ca.polymtl.inf4410.tp1.shared.ServerInterface;
 import ca.polymtl.inf4410.tp1.shared.ServerInterface.Command;
 
+import java.util.*;
+
 public class Client {
+	public static Vector<String> commands = new Vector<String>();
 	public static void main(String[] args) {
 		String distantHostname = null;
-		String x = 0;
+		String x = "";
 		if (args.length > 0) {
 			distantHostname = args[0];
 			if (args.length > 1) {
 				x = args[1];
 			}
 		}
+		commands.add("LIST");
+		commands.add("GET");
+		commands.add("LOCK");
+		commands.add("CREATE");
+		commands.add("PUSH");
+		commands.add("SYNCLOCALDIR");
 
 		Client client = new Client(distantHostname);
 		//x = client.clamp(x);		
@@ -50,15 +59,15 @@ public class Client {
 	}
 
 	private void runCommand(int command) {
-		appelNormal(command);
+		//appelNormal(command);
 
 		if (localServerStub != null) {
 			appelRMILocal(command);
 		}
 
-		if (distantServerStub != null) {
-			appelRMIDistant(command);
-		}
+		//if (distantServerStub != null) {
+		//	appelRMIDistant(command);
+		//}
 	}
 
 	private ServerInterface loadServerStub(String hostname) {
@@ -113,8 +122,13 @@ public class Client {
 			System.out.println("Erreur: " + e.getMessage());
 		}
 	}
-	private int convertStringCommandToInt(String command)
+	private static int convertStringCommandToInt(String command)
 	{
-		
+		String upperCaseCommand = command.toUpperCase();
+		if(commands.contains(upperCaseCommand))
+		{
+			return commands.indexOf(upperCaseCommand);
+		}
+		return -1;
 	} 
 }
