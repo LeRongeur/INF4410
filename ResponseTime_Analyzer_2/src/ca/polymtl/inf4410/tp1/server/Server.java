@@ -56,49 +56,6 @@ public class Server implements ServerInterface {
 		}
 	}
 
-	/*
-	 * Méthode accessible par RMI. Additionne les deux nombres passés en
-	 * paramètre.
-	 */
-	@Override
-	public int execute(int a, int b) throws RemoteException {
-		return a + b;
-	}
-
-	public Pair<Boolean, String> executeCommand(int command, String nom, int clientId, String contenu, String checkSum) throws RemoteException
-	{
-		if (command >= 0 && command <= 5)
-		{
-			switch(Command.values()[command]) 
-			{
-				case LIST : 
-					System.out.println("Executing command LIST...");
-					return printListFiles();		
-				case GET : 
-					System.out.println("Executing command GET...");
-					return sendFile(nom, checkSum);
-				case LOCK : 
-					System.out.println("Executing command LOCK...");
-					return lockFile(nom, clientId, checkSum);
-				case CREATE : 
-					System.out.println("Executing command CREATE...");
-					return createFile(nom);
-				case PUSH : 
-					System.out.println("Executing command PUSH...");
-					return pushFile(nom, contenu, clientId);
-				case SYNCLOCALDIR : 
-					System.out.println("Executing command SYNCLOCALDIR...");
-					return syncLocalDirectory();
-				default : 
-					return new Pair<Boolean, String>(false, "Commande inconnue.");
-			}
-		}
-		else
-		{
-			return new Pair<Boolean, String>(false, "Commande inconnue.");
-		}
-	}
-
 	private void loadAllFiles()
 	{
 		// TODO : Load all the files from the server in a vector or map?
@@ -111,8 +68,9 @@ public class Server implements ServerInterface {
 	    }
 	}
 
-	private Pair<Boolean, String> printListFiles()
+	public String executeList() throws RemoteException
 	{
+		System.out.println("Executing command LIST...");
 		// TODO : Print each files in the vector or map, with the UserID that has it locked
 		String returnString = "";
 	    for (String name: files.keySet())
@@ -120,104 +78,164 @@ public class Server implements ServerInterface {
 	    	if(files.get(name) > -1)
 	    	{
 	    		String value = files.get(name).toString();
-	    		returnString += name + " verrouille par client " + value + "\n"; 
+	    		returnString += name + " verrouillé par client " + value + "\n"; 
 	    	}
 	    	else
 	    	{
-	    		returnString += name + " non verrouille" + "\n";	
+	    		returnString += name + " non verrouillé" + "\n";	
 	    	}
  
 		}
-		return new Pair<Boolean, String>(true, returnString += files.size() + " fichier(s)");
+		returnString += files.size() + " fichier(s)";
+		return returnString;
 	}
 	
-	private Pair<Boolean, String> sendFile(String nom, String checkSum)
+	public Pair<Boolean, String> executeGet(String nom, String checkSum) throws RemoteException
 	{
+		System.out.println("Executing command GET...");
 		// TODO : Send file with name = nom if parameterChecksum different from localChecksum (in vector or map)
 		String returnString = "";
-		return new Pair<Boolean, String>(true, returnString);
+		Boolean isDifferent;
+		String checkSumServer = getCheckSum(nom);
+
+		if(!files.containsKey(nom))
+		{
+			returnString = "Fichier non existant.";
+			isDifferent = false;
+		}
+		else if(!checkSumServer.equals(checkSum))
+		{
+			// TODO : Send File
+			returnString = getContenu(nom);
+			isDifferent = true;
+		}
+		else
+		{
+			// TODO : ...
+			returnString = "Fichier déjà à jour.";
+			isDifferent = false;
+		}
+
+		return new Pair<Boolean, String>(isDifferent, returnString); 
 	}
 
-	private Pair<Boolean, String> lockFile(String nom, int clientID, String checkSumClient)
+	public Pair<Boolean, String> executeLock(String nom, int clientId, String checkSum) throws RemoteException
 	{
+		System.out.println("Executing command LOCK...");
 		// TODO : change lockID of file with name = nom for clientID
 		// TODO : Something with checksum apparently
 		String returnString = "";
-		Boolean isSuccess = false;
-		String checkSumServer = "";
+		Boolean isDifferent = false;
+		String checkSumServer = getCheckSum(nom);
 
-		MessageDigest messageDigest;
-		try {
-			messageDigest = MessageDigest.getInstance("MD5");
-			messageDigest.update(getContenu(nom).getBytes());
-			byte[] messageDigestMD5 = messageDigest.digest();
-			StringBuffer stringBuffer = new StringBuffer();
-			for (byte bytes : messageDigestMD5) {
-				stringBuffer.append(String.format("%02x", bytes & 0xff));
-			}
-
-			checkSumServer = stringBuffer.toString();
-			if(checkSumServer != checkSumClient)
-			{
-				// TODO : Append le contenu dans le string
-			}
-			else
-			{
-
-			}
-		} catch (NoSuchAlgorithmException exception) {
-			// TODO Auto-generated catch block
-			exception.printStackTrace();
+		if(!files.containsKey(nom))
+		{
+			returnString = "Fichier non existant.";
+			isDifferent = false;
+		}
+		else if(files.get(nom) != -1)
+		{
+			returnString = "Fichier est déjà verrouillé.";
+			isDifferent = false;
+		}
+		else if(!checkSumServer.equals(checkSum))
+		{
+			// TODO : Send File
+			isDifferent = true;
+			returnString = getContenu(nom);
+			files.put(nom, clientId);
+		}
+		else
+		{
+			// TODO : ...
+			isDifferent = false;
+			returnString = "Fichier identique à la copie locale.";
+			files.put(nom, clientId);
 		}
 
-		return new Pair<Boolean, String>(isSuccess, returnString);
+		return new Pair<Boolean, String>(isDifferent, returnString);
 	}
 
-	private Pair<Boolean, String> createFile(String name)
+	public Boolean executeCreate(String name) throws RemoteException
 	{
+		System.out.println("Executing command CREATE...");
 		// TODO : Create file with name = nom
 		String returnString = "";
 		Boolean isSuccess = false;
 		if(files.containsKey(name))
 		{
-			returnString += "Operation refusee: le fichier existe deja";
+			returnString += "Opération refusée: le fichier existe déjà";
 			isSuccess = false;
 		}
 		else
 		{
-		   byte data[] = name.getBytes();
-		   Path p = Paths.get("./Files/" + name + ".txt");
+		   Path p = Paths.get("./Files/" + name);
 
 		   try (OutputStream out = new BufferedOutputStream(
 		     Files.newOutputStream(p, CREATE, APPEND))) 
 		   {
-		     out.write(data, 0, data.length);
 		     files.put(name, -1);
-		     returnString += name + " Fichier ajoute.";
-		   } 
+		     returnString += name + " Fichier ajouté.";
+		   }
 		   catch (IOException y) 
 		   {
 		     returnString += y;
 		   }
 		   isSuccess = true;
 		}
-		return new Pair<Boolean, String>(isSuccess, returnString);
+		return isSuccess;
 	}
 
-	private Pair<Boolean, String> pushFile(String nom, String contenu, int clientId)
+	public Boolean executePush(String nom, String contenu, int clientId) throws RemoteException
 	{
+		System.out.println("Executing command PUSH...");
 		// TODO : Save file with name = nom, content = contenu, and owner as clientID?
-		String returnString = "";
 		Boolean isSuccess = false;
-		return new Pair<Boolean, String>(isSuccess, returnString);
+
+		if(!files.containsKey(nom))
+		{
+			System.out.println("Fichier non existant.");
+			isSuccess = false;
+		}
+		else if(clientId == files.get(nom))
+		{
+			byte data[] = contenu.getBytes();
+			Path p = Paths.get("./Files/" + nom);
+
+			try (OutputStream out = new BufferedOutputStream(
+			 Files.newOutputStream(p, CREATE, TRUNCATE_EXISTING))) 
+			{
+			 out.write(data, 0, data.length);
+			}
+			catch (IOException y) 
+			{
+			 	System.out.println("Erreur write push. " + y.getMessage());
+			}
+			files.put(nom, -1);
+			isSuccess = true;
+		}
+		else
+		{
+			isSuccess = false;
+		}
+
+		return isSuccess;
 	}
 	
-	private Pair<Boolean, String> syncLocalDirectory()
+	public HashMap<String, String> executeSyncLocalDirectory() throws RemoteException
 	{
+		System.out.println("Executing command SYNCLOCALDIR...");
 		// TODO : Send all files to client or send only files with different checksums
-		String returnString = "";
-		Boolean isSuccess = false;
-		return new Pair<Boolean, String>(isSuccess, returnString);
+		HashMap<String, String> contentAllServerFiles = new HashMap<String, String>();
+
+		Iterator it = files.entrySet().iterator();
+		while (it.hasNext()) 
+		{
+	        Map.Entry<String, String> pair = (Map.Entry<String, String>)it.next();
+	        contentAllServerFiles.put(pair.getKey(),getContenu(pair.getKey()));
+	    }
+
+		return contentAllServerFiles;
 	}
 
 	public int generateClientId() throws RemoteException 
@@ -226,26 +244,49 @@ public class Server implements ServerInterface {
 		return compteur++;
 	}
 
-
 	private int compteur = 0;
 
 	private String getContenu(String fileName)
 	{
 		String content = "";
 		Charset charset = Charset.forName("US-ASCII");
-		try (BufferedReader reader = Files.newBufferedReader(Paths.get("./" + fileName + ".txt"), charset)) 
+		try (BufferedReader reader = Files.newBufferedReader(Paths.get("./Files/" + fileName), charset)) 
 		{
-			System.out.println("cocou2");
 		    String line = null;
 		    while ((line = reader.readLine()) != null) 
 		    {
-		        content += line;
+		        content += line + "\n";
 		    }
 		} 
 		catch (IOException e) 
 		{
-			System.out.println("Erreur: " + e.getMessage());
+			System.out.println("Erreur getContenu : " + e.getMessage());
+			// TODO : Get sur un fichier qui nest pas sur le serveur
 		}
 		return content;
+	}
+
+	private String getCheckSum(String fileName)
+	{
+		String checkSum = "";
+		String contenu = getContenu(fileName);
+
+		MessageDigest messageDigest;
+		try {
+			messageDigest = MessageDigest.getInstance("MD5");
+			messageDigest.update(contenu.getBytes());
+			byte[] messageDigestMD5 = messageDigest.digest();
+			StringBuffer stringBuffer = new StringBuffer();
+			for (byte bytes : messageDigestMD5) {
+				stringBuffer.append(String.format("%02x", bytes & 0xff));
+			}
+
+			checkSum = stringBuffer.toString();
+		} catch (NoSuchAlgorithmException exception) {
+			// TODO Auto-generated catch block
+			System.out.println("Erreur getCheckSum : ");
+			exception.printStackTrace();
+		}
+		return checkSum;
 	}
 }

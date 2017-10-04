@@ -15,6 +15,11 @@ import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.nio.*;
 import static java.nio.file.StandardOpenOption.*;
+import javafx.util.Pair;
+import java.security.DigestInputStream;
+import java.security.DigestException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 public class Client {
 	
@@ -43,22 +48,18 @@ public class Client {
 		commands.add("SYNCLOCALDIR");
 
 		Client client = new Client(distantHostname);
-		System.out.println("cocou1");
  
 		Charset charset = Charset.forName("US-ASCII");
 		try (BufferedReader reader = Files.newBufferedReader(Paths.get("./ClientId.txt"), charset)) 
 		{
-			System.out.println("cocou2");
 		    String line = null;
 		    while ((line = reader.readLine()) != null) 
 		    {
 		        clientId = Integer.parseInt(line);
-		        System.out.println(clientId);
 		    }
 		} 
 		catch (IOException z) 
 		{
-		   System.out.println("cocou3");
 		   System.out.println(z);
 		   clientId = client.generateId();
 		   String clientIdString = Integer.toString(clientId);
@@ -76,12 +77,6 @@ public class Client {
 		   }
 		}
 
-		
-
-		//x = client.clamp(x);		
-		//int size = (int) Math.pow(10, x);
-		//byte[] var = new byte[size];
-		//client.run(var);
 		int command = convertStringCommandToInt(argCommand);
 		client.runCommand(command, argFileName);
 	}
@@ -110,19 +105,7 @@ public class Client {
 		//appelNormal(command);
 
 		if (localServerStub != null) {
-			String contenu;
-			String checkSum;
-			if(argFileName != "")
-			{
-				contenu = getContenu(argFileName);
-				checkSum = getCheckSum(argFileName);
-			}
-			else
-			{
-				contenu = "-1";
-				checkSum = "-1";
-			}
-			appelRMILocal(command, argFileName, clientId, contenu, checkSum);
+			appelRMILocal(command, argFileName);
 		}
 
 		//if (distantServerStub != null) {
@@ -158,20 +141,61 @@ public class Client {
 				+ " ns");
 	}*/
 
-	private void appelRMILocal(int command, String fileName, int clientId, String contenu, String checkSum) {
+	private void appelRMILocal(int command, String fileName) {
 		try {
-			long start = System.nanoTime();
-			System.out.println(localServerStub.executeCommand(command, fileName, clientId, contenu, checkSum).getValue());
-			long end = System.nanoTime();
+			String checkSum = "";
+			String contenu = "";
 
-			System.out.println("Temps écoulé appel RMI local: " + (end - start)
-					+ " ns");
-		} catch (RemoteException e) {
-			System.out.println("Erreur: " + e.getMessage());
+			if(command >= 0 && command <= 5)
+			{
+				switch(Command.values()[command])
+				{
+					case LIST : 
+						System.out.println(localServerStub.executeList());
+						break;
+					case GET : 
+						checkSum = getCheckSum(fileName);
+						Pair<Boolean, String> retourGet = localServerStub.executeGet(fileName, checkSum);
+						traiterRetourGet(fileName, retourGet);
+						break;
+					case LOCK : 
+						checkSum = getCheckSum(fileName);
+						Pair<Boolean, String> retourLock = localServerStub.executeLock(fileName, clientId, checkSum);
+						traiterRetourLock(fileName, retourLock);
+						break;
+					case CREATE : 
+						Boolean retourCreate = localServerStub.executeCreate(fileName);
+						traiterRetourCreate(fileName, retourCreate);
+						break;
+					case PUSH : 
+						contenu = getContenu(fileName);
+						if(!contenu.equals("-1"))
+						{
+							Boolean retourPush = localServerStub.executePush(fileName, contenu, clientId);
+							traiterRetourPush(fileName, retourPush);
+						}
+						break;
+					case SYNCLOCALDIR : 
+						HashMap<String, String> retourSync = localServerStub.executeSyncLocalDirectory();
+						traiterRetourSync(retourSync);
+						break;
+					default : 
+						System.out.println("Commande inconnue.");
+						break;
+				}
+			}
+			else
+			{
+				System.out.println("Commande inconnue.");
+			}
+		} 
+		catch (RemoteException e) 
+		{
+			System.out.println("Erreur applRMILocal : " + e.getMessage());
 		}
 	}
 
-	private void appelRMIDistant(int command, String fileName, int clientId, String contenu, String checkSum) {
+	/*private void appelRMIDistant(int command, String fileName, int clientId, String contenu, String checkSum) {
 		try {
 			long start = System.nanoTime();
 			System.out.println(distantServerStub.executeCommand(command, fileName, clientId, contenu, checkSum));
@@ -180,9 +204,10 @@ public class Client {
 			System.out.println("Temps écoulé appel RMI distant: "
 					+ (end - start) + " ns");
 		} catch (RemoteException e) {
-			System.out.println("Erreur: " + e.getMessage());
+			System.out.println("Erreur appelRMIDistant : " + e.getMessage());
 		}
-	}
+	}*/
+
 	private static int convertStringCommandToInt(String command)
 	{
 		String upperCaseCommand = command.toUpperCase();
@@ -198,7 +223,7 @@ public class Client {
 
 			return distantServerStub.generateClientId();
 		} catch (RemoteException e) {
-			System.out.println("Erreur: " + e.getMessage());
+			System.out.println("Erreur generateId : " + e.getMessage());
 			return -1;
 		}
 	} 
@@ -207,26 +232,137 @@ public class Client {
 	{
 		String content = "";
 		Charset charset = Charset.forName("US-ASCII");
-		try (BufferedReader reader = Files.newBufferedReader(Paths.get("./" + fileName + ".txt"), charset)) 
+		try (BufferedReader reader = Files.newBufferedReader(Paths.get("./FilesClient/" + fileName), charset)) 
 		{
-			System.out.println("cocou2");
 		    String line = null;
 		    while ((line = reader.readLine()) != null) 
 		    {
-		        content += line;
+		        content += line + "\n";
 		    }
 		} 
 		catch (IOException e) 
 		{
-			System.out.println("Erreur: " + e.getMessage());
+			System.out.println("Erreur lors de la lecture du fichier. Assurez-vous d'utiliser les caractères US-ASCII");
+			return "-1";
 		}
 		return content;
 	}
 
 	private String getCheckSum(String fileName)
 	{
-		String checkSum = "-1";
-		// TODO : Trouver le vrai checkSum
+		String checkSum = "";
+		String contenu = getContenu(fileName);
+
+		if(!contenu.equals("-1"))
+		{
+			MessageDigest messageDigest;
+			try 
+			{
+				messageDigest = MessageDigest.getInstance("MD5");
+				messageDigest.update(contenu.getBytes());
+				byte[] messageDigestMD5 = messageDigest.digest();
+				StringBuffer stringBuffer = new StringBuffer();
+				for (byte bytes : messageDigestMD5) 
+				{
+					stringBuffer.append(String.format("%02x", bytes & 0xff));
+				}
+
+				checkSum = stringBuffer.toString();
+			} 
+			catch (NoSuchAlgorithmException exception) 
+			{
+				// TODO Auto-generated catch block
+				System.out.println("Erreur getCheckSum client: ");
+				exception.printStackTrace();
+				checkSum = "-1";
+			}
+		}
+		else
+		{
+			checkSum = "-1";
+		}
+		
 		return checkSum;
+	}
+
+	private void traiterRetourGet(String name, Pair<Boolean, String> retourGet)
+	{
+		if(retourGet.getKey())
+		{
+			// TODO : Save file
+			writeFile(name, retourGet.getValue());
+			System.out.println(name + " synchronisé.");
+		}
+		else
+		{
+			System.out.println(retourGet.getValue());
+		}
+	}
+
+	private void traiterRetourLock(String name, Pair<Boolean, String> retourLock)
+	{
+		if(retourLock.getKey())
+		{
+			// TODO : Save file
+			writeFile(name, retourLock.getValue());
+			System.out.println(name + " synchronisé.");
+			System.out.println(name + " verrouillé.");
+		}
+		else
+		{
+			System.out.println(retourLock.getValue());
+		}
+	}
+
+	private void traiterRetourCreate(String name, Boolean retourCreate)
+	{
+		if(retourCreate)
+		{
+			System.out.println(name + " ajouté.");
+		}
+		else
+		{
+			System.out.println("Opération échouée. Le fichier existe déjà.");
+		}
+	}
+
+	private void traiterRetourPush(String name, Boolean retourPush)
+	{
+		if(retourPush)
+		{
+			System.out.println(name + " a été envoyé au serveur.");
+		}
+		else
+		{
+			System.out.println("Opération refusée : vous devez d'abord verrouiller le fichier.");
+		}
+	}
+
+	private void traiterRetourSync(HashMap<String, String> contentAllFilesServer)
+	{
+		Iterator it = contentAllFilesServer.entrySet().iterator();
+		while (it.hasNext()) 
+		{
+	        Map.Entry<String, String> pair = (Map.Entry<String, String>)it.next();
+	        writeFile(pair.getKey(), pair.getValue());
+	        it.remove(); // avoids a ConcurrentModificationException
+	    }
+	     System.out.println("Les fichiers du serveur ont été synchronisés.");
+	}
+
+	private void writeFile(String name, String content)
+	{
+		byte data[] = content.getBytes();
+		Path p = Paths.get("./FilesClient/" + name);
+
+		try (OutputStream out = new BufferedOutputStream(
+		 Files.newOutputStream(p, CREATE, TRUNCATE_EXISTING))) 
+		{
+		 out.write(data, 0, data.length);
+		} 
+		catch (IOException y)
+		{
+			System.out.println("Création échouée.");
+		}
 	}
 }
