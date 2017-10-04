@@ -9,10 +9,12 @@ import java.nio.*;
 import java.io.*;
 
 public interface ServerInterface extends Remote {
+	// Enum qui contient l'équivalence entre un entier et une commande
 	enum Command {
 	LIST, GET, LOCK, CREATE, PUSH, SYNCLOCALDIR
 }
 
+	// Liste des fonctions du serveur appelables par le client
 	String executeList() throws RemoteException;
 	Pair<Boolean, String> executeGet(String nom, String checkSum) throws RemoteException;
 	Pair<Boolean, String> executeLock(String nom, int clientId, String checkSum) throws RemoteException;
