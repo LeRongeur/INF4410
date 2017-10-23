@@ -97,7 +97,7 @@ public class Client {
 			System.setSecurityManager(new SecurityManager());
 		}
 
-		localServerStub = loadServerStub("127.0.0.1");
+		//localServerStub = loadServerStub("127.0.0.1");
 
 		if (distantServerHostname != null) {
 			distantServerStub = loadServerStub(distantServerHostname);
@@ -109,13 +109,13 @@ public class Client {
 	private void runCommand(int command, String argFileName) {
 		//appelNormal(command);
 
-		if (localServerStub != null) {
+		/*if (localServerStub != null) {
 			appelRMILocal(command, argFileName);
-		}
+		}*/
 
-		//if (distantServerStub != null) {
-		//	appelRMIDistant(command);
-		//}
+		if (distantServerStub != null) {
+			appelRMIDistant(command, argFileName);
+		}
 	}
 
 	// Fonction réutiliser de la première partie, elle charger le server stub
@@ -149,11 +149,7 @@ public class Client {
 				+ " ns");
 	}*/
 
-	// Fonction qui selon la commande, appelle la bonne fonction du serveur
-	// Avant d'appeler les fonctions, elle va chercher les contenus et checkSum, lorsque nécessaire
-	// Elle appelle aussi les méthodes pour traiter les valeurs retournées.
-	// Elle prend en paramètre l'entier qui correspond à la commande désirée ainsi que le nom du fichier qui est fourni comme paramètre lorsque nécessaire.
-	private void appelRMILocal(int command, String fileName) {
+	/*private void appelRMILocal(int command, String fileName) {
 		try {
 			String checkSum = "";
 			String contenu = "";
@@ -206,20 +202,66 @@ public class Client {
 		{
 			System.out.println("Erreur applRMILocal : " + e.getMessage());
 		}
-	}
-
-	/*private void appelRMIDistant(int command, String fileName, int clientId, String contenu, String checkSum) {
-		try {
-			long start = System.nanoTime();
-			System.out.println(distantServerStub.executeCommand(command, fileName, clientId, contenu, checkSum));
-			long end = System.nanoTime();
-
-			System.out.println("Temps écoulé appel RMI distant: "
-					+ (end - start) + " ns");
-		} catch (RemoteException e) {
-			System.out.println("Erreur appelRMIDistant : " + e.getMessage());
-		}
 	}*/
+
+	// Fonction qui selon la commande, appelle la bonne fonction du serveur
+	// Avant d'appeler les fonctions, elle va chercher les contenus et checkSum, lorsque nécessaire
+	// Elle appelle aussi les méthodes pour traiter les valeurs retournées.
+	// Elle prend en paramètre l'entier qui correspond à la commande désirée ainsi que le nom du fichier qui est fourni comme paramètre lorsque nécessaire.
+	private void appelRMIDistant(int command, String fileName) {
+		try {
+			String checkSum = "";
+			String contenu = "";
+
+			if(command >= 0 && command <= 5)
+			{
+				// Appels des fonctions du serveur ainsi que les fonctions qui traite les valeurs de retour selon la commande
+				switch(Command.values()[command])
+				{
+					case LIST : 
+						System.out.println(distantServerStub.executeList());
+						break;
+					case GET : 
+						checkSum = getCheckSum(fileName);
+						Pair<Boolean, String> retourGet = distantServerStub.executeGet(fileName, checkSum);
+						traiterRetourGet(fileName, retourGet);
+						break;
+					case LOCK : 
+						checkSum = getCheckSum(fileName);
+						Pair<Boolean, String> retourLock = distantServerStub.executeLock(fileName, clientId, checkSum);
+						traiterRetourLock(fileName, retourLock);
+						break;
+					case CREATE : 
+						Boolean retourCreate = distantServerStub.executeCreate(fileName);
+						traiterRetourCreate(fileName, retourCreate);
+						break;
+					case PUSH : 
+						contenu = getContenu(fileName);
+						if(!contenu.equals("-1"))
+						{
+							Boolean retourPush = distantServerStub.executePush(fileName, contenu, clientId);
+							traiterRetourPush(fileName, retourPush);
+						}
+						break;
+					case SYNCLOCALDIR : 
+						HashMap<String, String> retourSync = distantServerStub.executeSyncLocalDirectory();
+						traiterRetourSync(retourSync);
+						break;
+					default : 
+						System.out.println("Commande inconnue.");
+						break;
+				}
+			}
+			else
+			{
+				System.out.println("Commande inconnue.");
+			}
+		} 
+		catch (RemoteException e) 
+		{
+			System.out.println("Erreur applRMILocal : " + e.getMessage());
+		}
+	}
 
 	// Fonction qui convertit la commande entrée en entier pour respecter le Switch case de la fonction appelRMI
 	// Elle utilise le vecteur initialisé au début du programme

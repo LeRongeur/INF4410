@@ -1,0 +1,26 @@
+Pour exécuter noter TP :
+	Pour partir le serveur : 
+		Ouvrir un terminal.
+		Aller dans le dossier ".../1739351_1740216_TP1".
+		Exécuter la commande "ssh -i cloud.key.pub ubuntu@132.207.12.236"
+		Aller dans le dossier ".../1739351_1740216_TP1" de la machine virtuelle.
+		Exécuter la commande "ant" (au cas où le code n'est pas compilé).
+		Exécuter la commande "./server".
+
+	Pour partir le client :
+		Ouvrir un terminal.
+		Aller dans le dossier ".../1739351_1740216_TP1".
+		Exécuter la commande "ant" (au cas où le code n'est pas compilé).
+		Aller dans le dossier bin/ (cd bin).
+		Exécuter la commande "rmiregistry &"
+		Revenir dansle dossier ".../1739351_1740216_TP1".
+		Exécuter la commande désirée. (Exemple : "./client 132.207.12.236 list")
+
+	Pour partir des client additionnels : 
+		Ouvrir un terminal.
+		Aller dans le dossier "1739351_1740216_TP1".
+		Exécuter la commande désirée. (Exemple : "./client 132.207.12.236 list")
+
+	Notes additionnelles :
+		Pour le client, nous supposons que le dossier qui contient les fichiers du programme est le dossier suivant : ".../1739351_1740216_TP1/FilesClient/".
+		Pour le serveur, nous supposons que le dossier qui contient les fichiers du programme est le dossier suivant : ".../1739351_1740216_TP1/Files/".
