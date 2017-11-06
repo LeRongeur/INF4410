@@ -14,7 +14,7 @@
 	</target>
 	<target name="clean">
 		<delete dir="bin" />
-		<delete file="server.jar" />
+		<delete file="repartiteur.jar" />
 		<delete file="client.jar" />
 		<delete file="shared.jar" />
 		<delete file="operations.jar" />
@@ -28,7 +28,7 @@
 	</target>
 	<target depends="build-class" name="build-jar">
 		<jar destfile="shared.jar" basedir="bin" includes="shared/**" update="false" />
-		<jar destfile="server.jar" basedir="bin" includes="server/**" update="false" />
+		<jar destfile="repartiteur.jar" basedir="bin" includes="repartiteur/**" update="false" />
 		<jar destfile="client.jar" basedir="bin" includes="client/**" update="false" />
 		<jar destfile="operations.jar" basedir="bin" includes="operations/**" update="false" />
 		<jar destfile="calculator.jar" basedir="bin" includes="calculator/**" update="false" />

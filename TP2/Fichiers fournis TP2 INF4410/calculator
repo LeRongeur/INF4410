@@ -1,5 +1,0 @@
-pushd $(dirname $0) > /dev/null
-basepath=$(pwd)
-popd > /dev/null
-
-java -cp "$basepath"/calculator.jar:"$basepath"/operations.jar -Djava.security.policy="$basepath"/policy calculator.Calculator $*
