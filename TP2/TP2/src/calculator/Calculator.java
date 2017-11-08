@@ -16,26 +16,23 @@ import java.rmi.server.UnicastRemoteObject;
 import java.rmi.ConnectException;
 
 public class Calculator implements ServerInterfaceCalculator {
-	private static int q = -1; // Capacite
-	private static float m = -1; // Taux de mauvaises reponses
-
+	private int q = -1; // Capacite
+	private float m = -1; // Taux de mauvaises reponses
+	private int port;
 
 
 	public static void main(String[] args) throws RemoteException
 	{
+		Calculator calculator = new Calculator();
 		String distantHostName = null;
 		if (args.length > 2)
 		{
-			distantHostName = args[0];
-			Calculator.q = Integer.parseInt(args[1]);
-			m = Float.parseFloat(args[2]);
+			calculator.port = Integer.parseInt(args[0]);
+			calculator.q = Integer.parseInt(args[1]);
+			calculator.m = Float.parseFloat(args[2]);
 		}
-
-		Calculator calculator = new Calculator();
-
 		calculator.run();
 		//System.out.println(calculate(vec)); 
- 
 		/* 
 		Replace this by set up of server and then just wait for calculation requests...
 		Calculator calculator = new Calculator();
@@ -58,7 +55,7 @@ public class Calculator implements ServerInterfaceCalculator {
 			ServerInterfaceCalculator stub = (ServerInterfaceCalculator) UnicastRemoteObject
 					.exportObject(this, 0);
 
-			Registry registry = LocateRegistry.getRegistry();
+			Registry registry = LocateRegistry.getRegistry(port);
 			registry.rebind("server", stub);
 			System.out.println("Server ready.");
 		} catch (ConnectException e) {
@@ -101,9 +98,9 @@ public class Calculator implements ServerInterfaceCalculator {
 	{
 		System.out.println("Executing demande...");
 		System.out.println("NombreOp = " + nombreOp);
-		int tauxAcceptation = 100 - ((nombreOp - Calculator.q) / (5*q) * 100);
+		int tauxAcceptation = (int)(100 - ((nombreOp - q) / (float)(5*q) * 100));
 		System.out.println("Taux acceptation = " + tauxAcceptation);
-		Random rand = new Random();
+		Random rand = new Random(System.nanoTime());
 
     		int randomNum = rand.nextInt(101);
 		System.out.println("Randomly got : " + randomNum);

@@ -26,17 +26,19 @@ import java.util.List;
 
 public class Repartiteur {
 
-	private static Vector<String> calcIPs = new Vector<String>();
-	private static Vector<Integer> calcQs = new Vector<Integer>();
-	private static Vector<Float> calcMs = new Vector<Float>();
-	private static Vector<ServerInterfaceCalculator> calcStubs = new Vector<ServerInterfaceCalculator>();
+	private Vector<String> calcIPs = new Vector<String>();
+	private Vector<Integer> calcPorts = new Vector<Integer>();
+	private Vector<Integer> calcQs = new Vector<Integer>();
+	private Vector<Float> calcMs = new Vector<Float>();
+	private Vector<ServerInterfaceCalculator> calcStubs = new Vector<ServerInterfaceCalculator>();
 
-	private static Vector<Pair<Integer, Integer>> allOps = new Vector<Pair<Integer, Integer>>();
+	private Vector<Pair<Integer, Integer>> allOps = new Vector<Pair<Integer, Integer>>();
 
 	// Lorsqu'on lance le serveur, on l'initialise, on remplit la HashMap avec les fichiers sur le serveur et on lance le serveur
 	public static void main(String[] args) {
 		String fileName = null;
 		Boolean isSecured = true;
+		Repartiteur repartiteur = new Repartiteur();
 		if (args.length > 1)
 		{	
 			System.out.println("Debut lecture des arguments...");
@@ -44,15 +46,15 @@ public class Repartiteur {
 			isSecured = Boolean.valueOf(args[1]);
 			System.out.println("Fin lecture arguments.");
 			System.out.println("Debut chargement des operations...");
-			loadCalculations(fileName);
+			repartiteur.loadCalculations(fileName);
 			System.out.println("Fin chargement des operations.");
-			System.out.println("Operations : " + allOps);
+			System.out.println("Operations : " + repartiteur.allOps);
 			System.out.println("Debut chargement des serveurs de calculs...");
-			loadAllCalculators();
+			repartiteur.loadAllCalculators();
 			System.out.println("Fin chargement des serveurs de calculs.");
-			if(isSecured)
+			if(true) //TODO isSecured
 			{
-				repartirCalcsSecu();
+				repartiteur.repartirCalcsSecu();
 			}
 			else
 			{
@@ -61,7 +63,8 @@ public class Repartiteur {
 		}
 	}
 
-	private static void loadAllCalculators()
+
+	private void loadAllCalculators()
 	{
 		Charset charset = Charset.forName("US-ASCII");
 		try (BufferedReader reader = Files.newBufferedReader(Paths.get("./CalculatorIPs.txt"), charset)) 
@@ -74,6 +77,7 @@ public class Repartiteur {
 		} 
 		catch (IOException z) 
 		{
+		   System.out.println("CatchExceptionInLoadAllCalculators");
 		   System.out.println(z);	
 		}
 		System.out.println(calcIPs);
@@ -81,16 +85,17 @@ public class Repartiteur {
 		System.out.println(calcQs);
 	}
 
-	private static void loadCalculator(String line)
+	private void loadCalculator(String line)
 	{
 		String[] splitted = line.split("\\s+");
 		calcIPs.add(splitted[0]);
-		calcQs.add(Integer.parseInt(splitted[1]));
-		calcMs.add(Float.parseFloat(splitted[2]));
-		calcStubs.add(loadServerStubC(splitted[0]));
+		calcPorts.add(Integer.parseInt(splitted[1]));
+		calcQs.add(Integer.parseInt(splitted[2]));
+		calcMs.add(Float.parseFloat(splitted[3]));
+		calcStubs.add(loadServerStubC(splitted[0],Integer.parseInt(splitted[1])));
 	}
 
-	private static void loadCalculations(String fileName)
+	private void loadCalculations(String fileName)
 	{
 		Charset charset = Charset.forName("US-ASCII");
 		try (BufferedReader reader = Files.newBufferedReader(Paths.get(fileName), charset)) 
@@ -124,11 +129,13 @@ public class Repartiteur {
 		}
 	}
 
-	private static ServerInterfaceCalculator loadServerStubC(String hostname) {
+	private ServerInterfaceCalculator loadServerStubC(String hostname, int port) {
 		ServerInterfaceCalculator stub = null;
 
 		try {
-			Registry registry = LocateRegistry.getRegistry(hostname);
+			System.out.println("hostname : " + hostname);
+			System.out.println("port : " + port);
+			Registry registry = LocateRegistry.getRegistry(hostname,port);
 			stub = (ServerInterfaceCalculator) registry.lookup("server");
 		} catch (NotBoundException e) {
 			System.out.println("Erreur: Le nom '" + e.getMessage()
@@ -142,12 +149,13 @@ public class Repartiteur {
 		return stub;
 	}
 
-	private static void repartirCalcsSecu()
+	private void repartirCalcsSecu()
 	{
 		Boolean acceptedDemand;
 		int nbreOp;
 		int indexRendu = 0;		
 		int resultat = 0;
+		Boolean finOperations = false;
 		System.out.println("Debut de la reparition... ");
 		System.out.println("Operations : " + allOps);
 		while(indexRendu < allOps.size())
@@ -169,6 +177,12 @@ public class Repartiteur {
 						System.out.println("Essai avec : " + nbreOp);
 						acceptedDemand = calcStubs.get(indexCalc).demandeOp(nbreOp);
 						System.out.println("Demande acceptee : " + acceptedDemand);
+						if(acceptedDemand && nbreOp >= (allOps.size() - indexRendu))
+						{
+							acceptedDemand = !acceptedDemand;
+							nbreOp = (allOps.size() - indexRendu);
+							finOperations = true;
+						}
 					}	
 					catch (RemoteException e) 
 					{
@@ -177,7 +191,7 @@ public class Repartiteur {
 					}
 				}
 				System.out.println("Debut trouver u qui est accepte");
-				while(!acceptedDemand)
+				while(!acceptedDemand && !finOperations)
 				{	
 					nbreOp--;
 					try
@@ -199,6 +213,7 @@ public class Repartiteur {
 					System.out.println("Essai calcul avec : " + subList);
 					ArrayList<Pair<Integer, Integer>> list = new ArrayList<Pair<Integer, Integer>>(subList);
 					resultat += calcStubs.get(indexCalc).calculate(list);
+					resultat %= 4000;
 					System.out.println("Resultat obtenu = " + resultat);
 					indexRendu += nbreOp;
 				}	

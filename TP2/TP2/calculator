@@ -2,9 +2,7 @@ pushd $(dirname $0) > /dev/null
 basepath=$(pwd)
 popd > /dev/null
 
-java -cp "$basepath"/calculator.jar:"$basepath"/shared.jar \
+java -cp "$basepath"/calculator.jar:"$basepath"/shared.jar:"$basepath"/operations.jar \
   -Djava.rmi.server.codebase=file:"$basepath"/shared.jar \
-  -Djava.rmi.server.codebase=file:"$basepath"/operations.jar \
   -Djava.security.policy="$basepath"/policy \
-  -Djava.rmi.server.hostname=127.0.0.1 \
   calculator.Calculator $*
