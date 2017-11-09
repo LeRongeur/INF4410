@@ -21,18 +21,33 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.nio.charset.Charset;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
+interface Callback {
+    void putBackOps(List<Pair<Integer, Integer>> operations, int id);
+    void addResult(int result);
+}
 
-
-public class Repartiteur {
+public class Repartiteur implements Callback {
 
 	private Vector<String> calcIPs = new Vector<String>();
 	private Vector<Integer> calcPorts = new Vector<Integer>();
 	private Vector<Integer> calcQs = new Vector<Integer>();
 	private Vector<Float> calcMs = new Vector<Float>();
+
 	private Vector<ServerInterfaceCalculator> calcStubs = new Vector<ServerInterfaceCalculator>();
 
-	private Vector<Pair<Integer, Integer>> allOps = new Vector<Pair<Integer, Integer>>();
+	private static List calcAvailability = Collections.synchronizedList(new ArrayList());
+
+	//private static Vector<Pair<Integer, Integer>> allOps = new Vector<Pair<Integer, Integer>>(); //TODO changer pour un concurrent something
+	private static List allOps = Collections.synchronizedList(new ArrayList());
+
+	private ConcurrentHashMap<Integer, Integer> threadResults = new ConcurrentHashMap<Integer, Integer>();
+	private static ConcurrentHashMap<Integer, Integer> verifiedResults = new ConcurrentHashMap<Integer, Integer>();
+	
+	private Vector<CalcThread> calcThreads = new Vector<CalcThread>();
+	private static AtomicInteger compteurHash = new AtomicInteger();
 
 	// Lorsqu'on lance le serveur, on l'initialise, on remplit la HashMap avec les fichiers sur le serveur et on lance le serveur
 	public static void main(String[] args) {
@@ -48,7 +63,7 @@ public class Repartiteur {
 			System.out.println("Debut chargement des operations...");
 			repartiteur.loadCalculations(fileName);
 			System.out.println("Fin chargement des operations.");
-			System.out.println("Operations : " + repartiteur.allOps);
+			System.out.println("Operations : " + Repartiteur.allOps);
 			System.out.println("Debut chargement des serveurs de calculs...");
 			repartiteur.loadAllCalculators();
 			System.out.println("Fin chargement des serveurs de calculs.");
@@ -92,7 +107,10 @@ public class Repartiteur {
 		calcPorts.add(Integer.parseInt(splitted[1]));
 		calcQs.add(Integer.parseInt(splitted[2]));
 		calcMs.add(Float.parseFloat(splitted[3]));
-		calcStubs.add(loadServerStubC(splitted[0],Integer.parseInt(splitted[1])));
+		ServerInterfaceCalculator stub = loadServerStubC(splitted[0],Integer.parseInt(splitted[1]));
+		calcStubs.add(stub);
+		calcThreads.add(new CalcThread(calcQs.size()-1,stub));
+		calcAvailability.add(true);
 	}
 
 	private void loadCalculations(String fileName)
@@ -120,7 +138,7 @@ public class Repartiteur {
 				op = -1;
 			}
 			Pair<Integer, Integer> pair = new Pair<Integer, Integer>(op, Integer.parseInt(splitted[1]));
-			allOps.add(pair);
+			Repartiteur.allOps.add(pair);
 		    }
 		} 
 		catch (IOException z) 
@@ -152,18 +170,20 @@ public class Repartiteur {
 	private void repartirCalcsSecu()
 	{
 		Boolean acceptedDemand;
-		int nbreOp;
-		int indexRendu = 0;		
+		int nbreOp;		
 		int resultat = 0;
 		Boolean finOperations = false;
 		System.out.println("Debut de la reparition... ");
-		System.out.println("Operations : " + allOps);
-		while(indexRendu < allOps.size())
+		System.out.println("Operations : " + Repartiteur.allOps);
+		while(Repartiteur.allOps.size() > 0)
 		{
 			System.out.println("Nouvelle iteration sur les serveurs de calculs dispos");
-			System.out.println("Reste " + (allOps.size() - indexRendu) + "operation a distribuer");
-			for(int indexCalc = 0; indexCalc < calcStubs.size(); indexCalc++)
+			System.out.println("Reste " + (Repartiteur.allOps.size()) + "operation a distribuer");
+			for(int indexCalc = 0; indexCalc < calcStubs.size() && allOps.size() > 0; indexCalc++)
 			{
+				if(!(Boolean)calcAvailability.get(indexCalc))
+					continue;
+
 				System.out.println("Server numero " + indexCalc);
 				nbreOp = calcQs.get(indexCalc) + 1;
 				acceptedDemand = true;
@@ -177,10 +197,10 @@ public class Repartiteur {
 						System.out.println("Essai avec : " + nbreOp);
 						acceptedDemand = calcStubs.get(indexCalc).demandeOp(nbreOp);
 						System.out.println("Demande acceptee : " + acceptedDemand);
-						if(acceptedDemand && nbreOp >= (allOps.size() - indexRendu))
+						if(nbreOp >= Repartiteur.allOps.size())
 						{
-							acceptedDemand = !acceptedDemand;
-							nbreOp = (allOps.size() - indexRendu);
+							acceptedDemand = false;
+							nbreOp = Repartiteur.allOps.size();
 							finOperations = true;
 						}
 					}	
@@ -207,24 +227,49 @@ public class Repartiteur {
 					}
 				}
 				System.out.println("Trouve : " + nbreOp);
-				List<Pair<Integer, Integer>> subList = allOps.subList(indexRendu,indexRendu + nbreOp);
-				try
+				List<Pair<Integer, Integer>> subList = Repartiteur.allOps.subList(0,nbreOp);
+
+				System.out.println("Essai calcul avec : " + subList);
+				ArrayList<Pair<Integer, Integer>> list = new ArrayList<Pair<Integer, Integer>>(subList);
+				calcThreads.get(indexCalc).setOperations(list);
+				System.out.println();
+				calcThreads.get(indexCalc).run();
+				for(int i = 0; i < nbreOp; i++)
 				{
-					System.out.println("Essai calcul avec : " + subList);
-					ArrayList<Pair<Integer, Integer>> list = new ArrayList<Pair<Integer, Integer>>(subList);
-					resultat += calcStubs.get(indexCalc).calculate(list);
-					resultat %= 4000;
-					System.out.println("Resultat obtenu = " + resultat);
-					indexRendu += nbreOp;
-				}	
-				catch (RemoteException e) 
-				{
-					System.out.println("Erreur appel calculate : " + e.getMessage());
+					Repartiteur.allOps.remove(0);
 				}
 				System.out.println("Fin de literation");
 			}
 		}
 		System.out.println("Done doing calculations in Repartiteur...");
-		System.out.println("Result is: " + resultat);
+		System.out.println(Repartiteur.verifiedResults);
+		System.out.println("Result is: " + finalSum());
+	}
+	
+	public int finalSum()
+	{
+		int resultat = 0;
+		for(Integer value : Repartiteur.verifiedResults.values())
+		{
+			resultat += value;
+			resultat %= 4000;
+		}
+		return resultat;
+	}
+	
+	public void putBackOps(List<Pair<Integer, Integer>> operations, int id) {
+		System.out.println("I've been called back to put back ops");
+		// TODO verify somehow? with the continu later
+		for(int i = 0; i < operations.size(); i++)
+		{
+			Repartiteur.allOps.add(operations.get(i));
+		}
+		calcAvailability.set(id,false);
+	}
+
+	public void addResult(int result) {
+		System.out.println("I've been called back and result is : " + result);
+		Repartiteur.verifiedResults.put(compteurHash.get(),result);
+		Repartiteur.compteurHash.incrementAndGet();
 	}
 }
