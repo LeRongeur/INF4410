@@ -17,7 +17,7 @@ import java.rmi.ConnectException;
 
 public class Calculator implements ServerInterfaceCalculator {
 	private int q = -1; // Capacite
-	private float m = -1; // Taux de mauvaises reponses
+	private int m = -1; // Taux de mauvaises reponses
 	private int port;
 
 
@@ -29,15 +29,9 @@ public class Calculator implements ServerInterfaceCalculator {
 		{
 			calculator.port = Integer.parseInt(args[0]);
 			calculator.q = Integer.parseInt(args[1]);
-			calculator.m = Float.parseFloat(args[2]);
+			calculator.m = Integer.parseInt(args[2]);
 		}
 		calculator.run();
-		//System.out.println(calculate(vec)); 
-		/* 
-		Replace this by set up of server and then just wait for calculation requests...
-		Calculator calculator = new Calculator();
-		calculator.run();
-		*/
 	}
 
 
@@ -67,9 +61,18 @@ public class Calculator implements ServerInterfaceCalculator {
 		}
 	}
 
-	public int calculate(ArrayList<Pair<Integer, Integer>> operations) throws RemoteException
+	public int calculateUnsecured(ArrayList<Pair<Integer, Integer>> operations) throws RemoteException
 	{
-		System.out.println("Executing calculations...");
+		// TODO : Trouver nombre random
+		int tauxMalicieux = m;
+		Random rand = new Random(System.nanoTime());
+
+    	int randomNum = rand.nextInt(101);
+		System.out.println("Randomly got : " + randomNum);
+		System.out.println("Malicieux : " + (randomNum <= m));
+		Boolean malicieux = (randomNum <= m);
+
+		System.out.println("Executing unsecured calculations...");
 		int resultat = 0;
 		for(int i = 0; i < operations.size(); i++)
 		{
@@ -89,7 +92,41 @@ public class Calculator implements ServerInterfaceCalculator {
 			}
 			resultat %= 4000;
 		}
-		System.out.println("Done doing calculations in calculator...");
+		System.out.println("Done doing unsecured calculations in calculator...");
+		System.out.println("Calculated : " + resultat);
+		if(malicieux)
+		{
+			return rand.nextInt(500000);
+		}
+		else
+		{
+			return resultat;
+		}
+	}
+
+	public int calculateSecured(ArrayList<Pair<Integer, Integer>> operations) throws RemoteException
+	{
+		System.out.println("Executing secured calculations...");
+		int resultat = 0;
+		for(int i = 0; i < operations.size(); i++)
+		{
+			switch(operations.get(i).getKey())
+			{
+				case 0 :
+					// TODO : return pell de ...
+					resultat += Operations.pell(operations.get(i).getValue());
+					break;
+				case 1 :
+					// TODO : return prime de ...
+					resultat += Operations.prime(operations.get(i).getValue());
+					break;
+				default :
+					System.out.println("Operation inconnue.");
+					break;
+			}
+			resultat %= 4000;
+		}
+		System.out.println("Done doing secured calculations in calculator...");
 		System.out.println("Calculated : " + resultat);
 		return resultat;
 	}
@@ -102,7 +139,7 @@ public class Calculator implements ServerInterfaceCalculator {
 		System.out.println("Taux acceptation = " + tauxAcceptation);
 		Random rand = new Random(System.nanoTime());
 
-    		int randomNum = rand.nextInt(101);
+    	int randomNum = rand.nextInt(101);
 		System.out.println("Randomly got : " + randomNum);
 		System.out.println("Returning : " + (randomNum <= tauxAcceptation));
 		System.out.println("Done executing demande...");

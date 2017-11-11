@@ -15,11 +15,13 @@ public class CalcThread extends Thread {
 	private ServerInterfaceCalculator stub;
 	private int result = 0;
 	private int id;
+	private Boolean isSecured;
 
-	public CalcThread(int id,ServerInterfaceCalculator stub)
+	public CalcThread(int id,ServerInterfaceCalculator stub, Boolean isSecured)
 	{
 		this.stub = stub;
 		this.id = id;
+		this.isSecured = isSecured;
 	}
 
 	public void register1(Callback callback) {
@@ -35,7 +37,14 @@ public class CalcThread extends Thread {
 		System.out.println("Cool :");
 		try
 		{
-			this.result = this.stub.calculate(this.operations);
+			if(this.isSecured)
+			{
+				this.result = this.stub.calculateSecured(this.operations);
+			}
+			else
+			{
+				this.result = this.stub.calculateUnsecured(this.operations);
+			}
 			System.out.println("Cool! my result is :" + result);
 			Callback callBack = new Repartiteur();
 			this.register1(callBack);

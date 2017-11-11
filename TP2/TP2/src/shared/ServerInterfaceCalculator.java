@@ -10,6 +10,7 @@ import java.io.*;
 
 public interface ServerInterfaceCalculator extends Remote {
 	// Liste des fonctions du serveur appelables par le Repartiteur
-	int calculate(ArrayList<Pair<Integer, Integer>> operations) throws RemoteException;
+	int calculateSecured(ArrayList<Pair<Integer, Integer>> operations) throws RemoteException;
+	int calculateUnsecured(ArrayList<Pair<Integer, Integer>> operations) throws RemoteException;
 	Boolean demandeOp(int nombreOp) throws RemoteException;
 }
