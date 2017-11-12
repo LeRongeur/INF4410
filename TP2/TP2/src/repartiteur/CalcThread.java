@@ -34,7 +34,7 @@ public class CalcThread extends Thread {
 
 	public void run()
 	{	
-		System.out.println("Cool :");
+		//System.out.println("Cool :");
 		try
 		{
 			if(this.isSecured)
@@ -45,7 +45,7 @@ public class CalcThread extends Thread {
 			{
 				this.result = this.stub.calculateUnsecured(this.operations);
 			}
-			System.out.println("Cool! my result is :" + result);
+			//System.out.println("Cool! my result is :" + result);
 			Callback callBack = new Repartiteur();
 			this.register1(callBack);
 		}		

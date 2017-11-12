@@ -16,8 +16,8 @@ import java.rmi.server.UnicastRemoteObject;
 import java.rmi.ConnectException;
 
 public class Calculator implements ServerInterfaceCalculator {
-	private int q = -1; // Capacite
-	private int m = -1; // Taux de mauvaises reponses
+	private int q = -1; // Capacite du serveur
+	private int m = 0; // Taux de mauvaises reponses
 	private int port;
 
 
@@ -25,11 +25,14 @@ public class Calculator implements ServerInterfaceCalculator {
 	{
 		Calculator calculator = new Calculator();
 		String distantHostName = null;
-		if (args.length > 2)
+		if (args.length > 1)
 		{
 			calculator.port = Integer.parseInt(args[0]);
 			calculator.q = Integer.parseInt(args[1]);
-			calculator.m = Integer.parseInt(args[2]);
+			if(args.length > 2)
+			{
+				calculator.m = Integer.parseInt(args[2]);
+			}
 		}
 		calculator.run();
 	}
@@ -68,11 +71,11 @@ public class Calculator implements ServerInterfaceCalculator {
 		Random rand = new Random(System.nanoTime());
 
     	int randomNum = rand.nextInt(101);
-		System.out.println("Randomly got : " + randomNum);
-		System.out.println("Malicieux : " + (randomNum <= m));
+		//System.out.println("Randomly got : " + randomNum);
+		//System.out.println("Malicieux : " + (randomNum <= m));
 		Boolean malicieux = (randomNum <= m);
 
-		System.out.println("Executing unsecured calculations...");
+		//System.out.println("Executing unsecured calculations...");
 		int resultat = 0;
 		for(int i = 0; i < operations.size(); i++)
 		{
@@ -87,12 +90,12 @@ public class Calculator implements ServerInterfaceCalculator {
 					resultat += Operations.prime(operations.get(i).getValue());
 					break;
 				default :
-					System.out.println("Operation inconnue.");
+					//System.out.println("Operation inconnue.");
 					break;
 			}
 			resultat %= 4000;
 		}
-		System.out.println("Done doing unsecured calculations in calculator...");
+		//System.out.println("Done doing unsecured calculations in calculator...");
 		System.out.println("Calculated : " + resultat);
 		if(malicieux)
 		{
@@ -106,7 +109,7 @@ public class Calculator implements ServerInterfaceCalculator {
 
 	public int calculateSecured(ArrayList<Pair<Integer, Integer>> operations) throws RemoteException
 	{
-		System.out.println("Executing secured calculations...");
+		//System.out.println("Executing secured calculations...");
 		int resultat = 0;
 		for(int i = 0; i < operations.size(); i++)
 		{
@@ -121,28 +124,28 @@ public class Calculator implements ServerInterfaceCalculator {
 					resultat += Operations.prime(operations.get(i).getValue());
 					break;
 				default :
-					System.out.println("Operation inconnue.");
+					//System.out.println("Operation inconnue.");
 					break;
 			}
 			resultat %= 4000;
 		}
-		System.out.println("Done doing secured calculations in calculator...");
+		//System.out.println("Done doing secured calculations in calculator...");
 		System.out.println("Calculated : " + resultat);
 		return resultat;
 	}
 
 	public Boolean demandeOp(int nombreOp) throws RemoteException
 	{
-		System.out.println("Executing demande...");
-		System.out.println("NombreOp = " + nombreOp);
+		//System.out.println("Executing demande...");
+		//System.out.println("NombreOp = " + nombreOp);
 		int tauxAcceptation = (int)(100 - ((nombreOp - q) / (float)(5*q) * 100));
-		System.out.println("Taux acceptation = " + tauxAcceptation);
+		//System.out.println("Taux acceptation = " + tauxAcceptation);
 		Random rand = new Random(System.nanoTime());
 
     	int randomNum = rand.nextInt(101);
-		System.out.println("Randomly got : " + randomNum);
-		System.out.println("Returning : " + (randomNum <= tauxAcceptation));
-		System.out.println("Done executing demande...");
+		//System.out.println("Randomly got : " + randomNum);
+		//System.out.println("Returning : " + (randomNum <= tauxAcceptation));
+		//System.out.println("Done executing demande...");
 		return randomNum <= tauxAcceptation;
 	}
 }
