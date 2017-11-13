@@ -18,9 +18,9 @@ import java.rmi.ConnectException;
 public class Calculator implements ServerInterfaceCalculator {
 	private int q = -1; // Capacite du serveur
 	private int m = 0; // Taux de mauvaises reponses
-	private int port;
+	private int port; // Port du serveur
 
-
+	//Fonction main qui parse les paramètres et les assignes aux attributs en question. Lance également la fonction run
 	public static void main(String[] args) throws RemoteException
 	{
 		Calculator calculator = new Calculator();
@@ -64,9 +64,10 @@ public class Calculator implements ServerInterfaceCalculator {
 		}
 	}
 
+	//Fonction qui fait les calculs en mode non-sécurisé. Prend en paramètre un ArrayList contenant les opérations
 	public int calculateUnsecured(ArrayList<Pair<Integer, Integer>> operations) throws RemoteException
 	{
-		// TODO : Trouver nombre random
+		//Trouve un nombre aléatoire pour déterminer si le serveur va retourner un faux résultat selon le m
 		int tauxMalicieux = m;
 		Random rand = new Random(System.nanoTime());
 
@@ -81,12 +82,12 @@ public class Calculator implements ServerInterfaceCalculator {
 		{
 			switch(operations.get(i).getKey())
 			{
+				//0 correspond à pell
 				case 0 :
-					// TODO : return pell de ...
 					resultat += Operations.pell(operations.get(i).getValue());
 					break;
+				//1 correspond à prime
 				case 1 :
-					// TODO : return prime de ...
 					resultat += Operations.prime(operations.get(i).getValue());
 					break;
 				default :
@@ -97,6 +98,7 @@ public class Calculator implements ServerInterfaceCalculator {
 		}
 		//System.out.println("Done doing unsecured calculations in calculator...");
 		System.out.println("Calculated : " + resultat);
+		//Retourne un nombre aléatoire dans le cas où le serveur est considéré malicieux, sinon retourne le bon résultat.
 		if(malicieux)
 		{
 			return rand.nextInt(500000);
@@ -107,6 +109,7 @@ public class Calculator implements ServerInterfaceCalculator {
 		}
 	}
 
+	//Fonction qui fait les calculs en mode sécurisé. Prend en paramètre un ArrayList contenant les opérations
 	public int calculateSecured(ArrayList<Pair<Integer, Integer>> operations) throws RemoteException
 	{
 		//System.out.println("Executing secured calculations...");
@@ -116,11 +119,11 @@ public class Calculator implements ServerInterfaceCalculator {
 			switch(operations.get(i).getKey())
 			{
 				case 0 :
-					// TODO : return pell de ...
+					//0 correspond à pell
 					resultat += Operations.pell(operations.get(i).getValue());
 					break;
 				case 1 :
-					// TODO : return prime de ...
+					//1 correspond à prime
 					resultat += Operations.prime(operations.get(i).getValue());
 					break;
 				default :
@@ -131,9 +134,12 @@ public class Calculator implements ServerInterfaceCalculator {
 		}
 		//System.out.println("Done doing secured calculations in calculator...");
 		System.out.println("Calculated : " + resultat);
+
+		//Retourne le résultat
 		return resultat;
 	}
 
+	//Fonction qui calcul le taux d'acceptation selon le nombre d'opération qu'il recoit et retourne s'il accepte ou non de calculer ce nombre d'opérations
 	public Boolean demandeOp(int nombreOp) throws RemoteException
 	{
 		//System.out.println("Executing demande...");
