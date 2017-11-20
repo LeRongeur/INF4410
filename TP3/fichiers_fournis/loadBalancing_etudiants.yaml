@@ -1,0 +1,65 @@
+heat_template_version: 2014-10-16
+
+description: A template to deploy a load balanced web server
+
+parameters:
+  image:
+    type: string
+    description: Image utilisee pour les serveurs
+    default: INF4410-Ubuntu-trusty-mini
+
+  flavor:
+    type: string
+    description: Flavor utilisee par les serveurs
+    default: INF4410-mini
+
+  subnet_id:
+    type: string
+    description: Sous-reseau dans lequel le load balancer sera situe
+    default: inf4410-net
+
+resources:
+  server_nodes:
+      type: OS::Heat::ResourceGroup
+      properties:
+        count: 3
+        resource_def:
+          type: OS::Nova::Server
+          properties:
+            image: {get_param: image}
+            flavor: {get_param: flavor}
+            networks: [{network: inf4410-net}]
+            user_data_format: RAW
+            user_data: |
+                  #!/bin/bash -v
+                  curl -0 https://raw.githubusercontent.com/houssemmh/INF4410-TP3/master/server.py
+                  python server.py
+
+  mypool:
+    type: OS::Neutron::Pool
+    properties:
+      lb_method: ROUND_ROBIN
+      protocol: HTTP
+      subnet: 6579eb07-88c3-4707-9c6e-ab90a78cca02
+      vip: {"protocol_port": 80}
+
+  loadbalancer:
+    type: OS::Neutron::LoadBalancer
+    properties:
+      pool_id: {get_resource: mypool}
+      protocol_port: 80
+
+  monitor:
+      type: OS::Neutron::HealthMonitor
+      properties:
+        pool_id: {get_resource: mypool}
+        type: TCP
+        delay: 8
+        max_retries: 1
+        timeout: 5
+
+
+outputs:
+  pool_ip_address:
+    value: {get_attr: [mypool, vip, address]}
+    description: The IP address of the load balancing pool
