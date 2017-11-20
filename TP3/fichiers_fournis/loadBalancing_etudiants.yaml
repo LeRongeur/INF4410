@@ -32,27 +32,28 @@ resources:
             user_data_format: RAW
             user_data: |
                   #!/bin/bash -v
-                  curl -0 https://raw.githubusercontent.com/houssemmh/INF4410-TP3/master/server.py
-                  python server.py
+                  curl -O https://raw.githubusercontent.com/houssemmh/INF4410-TP3/master/server.py
+                  python server.py Simon-Pierre le Chat
 
   mypool:
     type: OS::Neutron::Pool
     properties:
       lb_method: ROUND_ROBIN
       protocol: HTTP
+      monitors: [{get_resource: monitor}]
       subnet: 6579eb07-88c3-4707-9c6e-ab90a78cca02
-      vip: {"protocol_port": 80}
+      vip: {"protocol_port": 8000}
 
   loadbalancer:
     type: OS::Neutron::LoadBalancer
     properties:
+      members: {get_attr: [server_nodes, refs]}
       pool_id: {get_resource: mypool}
-      protocol_port: 80
+      protocol_port: 8000
 
   monitor:
       type: OS::Neutron::HealthMonitor
       properties:
-        pool_id: {get_resource: mypool}
         type: TCP
         delay: 8
         max_retries: 1
