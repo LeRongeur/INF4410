@@ -1,0 +1,45 @@
+heat_template_version: 2014-10-16
+
+description: A template to deploy a load balanced web server
+
+parameters:
+  image:
+    type: string
+    description: Image utilisee pour les serveurs
+    default: INF4410-Ubuntu-trusty-mini
+
+  flavor:
+    type: string
+    description: Flavor utilisee par les serveurs
+    default: INF4410-mini
+
+  subnet_id:
+    type: string
+    description: Sous-reseau dans lequel le load balancer sera situe
+    default: inf4410-net
+
+  key:
+    type: string
+    description: SSH key to connect to the servers
+    default: TP3
+
+resources:
+  server:
+    type: OS::Nova::Server
+    properties:
+      image: {get_param: image}
+      flavor: {get_param: flavor}
+      networks: [{network: inf4410-net}]
+      key_name: {get_param: key}
+      user_data_format: RAW
+      user_data: |
+        #!/bin/bash -v
+        curl -O https://raw.githubusercontent.com/houssemmh/INF4410-TP3/master/server.py
+        python server.py &
+        EXIT  
+        EOF
+
+outputs:
+  server_networks:
+    description: The networks of the deployed server
+    value: { get_attr: [server, networks] }
